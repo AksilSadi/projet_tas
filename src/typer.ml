@@ -8,6 +8,9 @@ let rec print_term (t : pterm) : string =
     | Abs (x, t) -> "(fun "^ x ^" -> " ^ (print_term t) ^")" 
     | N n -> string_of_int n
     | Add (t1, t2) -> "(" ^ (print_term t1) ^" + "^ (print_term t2) ^ ")"
+    | Ifz (t1, t2, t3) -> "(ifz " ^ (print_term t1) ^ " then " ^ (print_term t2) ^ " else " ^ (print_term t3) ^ ")"
+    | Succ t1 -> "(succ " ^ (print_term t1) ^ ")"
+    | Pred t1 -> "(pred " ^ (print_term t1) ^ ")"
 (* pretty printer de types*)                    
 let rec print_type (t : ptype) : string =
   match t with
@@ -64,6 +67,14 @@ let rec genere_equa (te : pterm) (ty : ptype) (e : env) : equa =
   | Add (t1, t2) -> let eq1 : equa = genere_equa t1 Nat e in
       let eq2 : equa = genere_equa t2 Nat e in
       (ty, Nat)::(eq1 @ eq2)
+  | Ifz (t1, t2, t3) -> let eq1 : equa = genere_equa t1 Nat e in
+      let eq2 : equa = genere_equa t2 ty e in
+      let eq3 : equa = genere_equa t3 ty e in
+      eq1 @ eq2 @ eq3
+  | Succ t1 -> let eq1 : equa = genere_equa t1 Nat e in
+      (ty, Nat)::eq1
+  | Pred t1 -> let eq1 : equa = genere_equa t1 Nat e in
+      (ty, Nat)::eq1
       
 exception Echec_unif of string 
 (* rembobine le zipper *)

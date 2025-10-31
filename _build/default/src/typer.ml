@@ -8,6 +8,9 @@ let rec print_term (t : pterm) : string =
     | Abs (x, t) -> "(fun "^ x ^" -> " ^ (print_term t) ^")" 
     | N n -> string_of_int n
     | Add (t1, t2) -> "(" ^ (print_term t1) ^" + "^ (print_term t2) ^ ")"
+    | Ifz (t1, t2, t3) -> "(ifz " ^ (print_term t1) ^ " then " ^ (print_term t2) ^ " else " ^ (print_term t3) ^ ")"
+    | Succ t1 -> "(succ " ^ (print_term t1) ^ ")"
+    | Pred t1 -> "(pred " ^ (print_term t1) ^ ")"
 (* pretty printer de types*)                    
 let rec print_type (t : ptype) : string =
   match t with
