@@ -1,0 +1,8 @@
+(library
+ (name tas_lib)
+ (modules ast utils typer evaluator))
+
+(executable
+ (name main)
+ (modules main)
+ (libraries tas_lib))
