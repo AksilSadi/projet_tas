@@ -67,6 +67,27 @@ let rec genere_equa (te : pterm) (ty : ptype) (e : env) : equa =
   | Add (t1, t2) -> let eq1 : equa = genere_equa t1 Nat e in
       let eq2 : equa = genere_equa t2 Nat e in
       (ty, Nat)::(eq1 @ eq2)
+  | Ifz (t1, t2, t3) -> let eq1 : equa = genere_equa t1 Nat e in
+      let eq2 : equa = genere_equa t2 ty e in
+      let eq3 : equa = genere_equa t3 ty e in
+      eq1 @ eq2 @ eq3
+  | Succ t1 -> let eq1 : equa = genere_equa t1 Nat e in
+      (ty, Nat)::eq1
+  | Pred t1 -> let eq1 : equa = genere_equa t1 Nat e in
+      (ty, Nat)::eq1
+  | Couple (t1, t2) -> let nv1 : string = nouvelle_var () 
+      and nv2 : string = nouvelle_var () in
+      let eq1 : equa = genere_equa t1 (Var nv1) e in
+      let eq2 : equa = genere_equa t2 (Var nv2) e in
+      (ty, Arr (Var nv1, Var nv2))::(eq1 @ eq2)
+  | Fst t1 -> let nv1 : string = nouvelle_var () 
+      and nv2 : string = nouvelle_var () in
+      let eq1 : equa = genere_equa t1 (Arr (Var nv1, Var nv2)) e in
+      (ty, Var nv1)::eq1
+  | Snd t1 -> let nv1 : string = nouvelle_var () 
+      and nv2 : string = nouvelle_var () in
+      let eq1 : equa = genere_equa t1 (Arr (Var nv1, Var nv2)) e in
+      (ty, Var nv2)::eq1
       
 exception Echec_unif of string 
 (* rembobine le zipper *)

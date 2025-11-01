@@ -7,6 +7,9 @@ type pterm = Var of string
 | Ifz of pterm * pterm * pterm 
 | Succ of pterm 
 | Pred of pterm
+| Couple of pterm * pterm
+| Fst of pterm
+| Snd of pterm
 (* Types *) 
 type ptype = Var of string | Arr of ptype * ptype | Nat 
 (* Environnements de typage *) 
