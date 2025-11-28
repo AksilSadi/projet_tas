@@ -11,11 +11,20 @@ let rec print_term (t : pterm) : string =
     | Ifz (t1, t2, t3) -> "(ifz " ^ (print_term t1) ^ " then " ^ (print_term t2) ^ " else " ^ (print_term t3) ^ ")"
     | Succ t1 -> "(succ " ^ (print_term t1) ^ ")"
     | Pred t1 -> "(pred " ^ (print_term t1) ^ ")"
+    | Couple (t1, t2) -> "(" ^ (print_term t1) ^", "^ (print_term t2) ^ ")"
+    | ProdG t1 -> "(π₁ " ^ (print_term t1) ^ ")"
+    | ProdD t1 -> "(π₂ " ^ (print_term t1) ^ ")"
+    | SumG t1 -> "(inl " ^ (print_term t1) ^ ")"
+    | SumD t1 -> "(inr " ^ (print_term t1) ^ ")"
+    | MatchSum (t0, x1, t1, x2, t2) -> "(match " ^ (print_term t0) ^ " with inl " ^ x1 ^ " -> " ^ (print_term t1) ^ " | inr " ^ x2 ^ " -> " ^ (print_term t2) ^ ")"
+
 (* pretty printer de types*)                    
 let rec print_type (t : ptype) : string =
   match t with
     Var x -> x
   | Arr (t1, t2) -> "(" ^ (print_type t1) ^" -> "^ (print_type t2) ^")"
+  | Prod (t1, t2) -> "(" ^ (print_type t1) ^" × "^ (print_type t2) ^")"
+  | Sum (t1, t2) -> "(" ^ (print_type t1) ^" + "^ (print_type t2) ^")"
   | Nat -> "Nat" 
 (* générateur de noms frais de variables de types *)
 let compteur_var : int ref = ref 0                    
@@ -38,6 +47,8 @@ let rec appartient_type (v : string) (t : ptype) : bool =
   match t with
     Var v1 when v1 = v -> true
   | Arr (t1, t2) -> (appartient_type v t1) || (appartient_type v t2) 
+  | Prod (t1, t2) -> (appartient_type v t1) || (appartient_type v t2)
+  | Sum (t1, t2) -> (appartient_type v t1) || (appartient_type v t2)
   | _ -> false
 
 (* remplace une variable par un type dans type *)
@@ -46,6 +57,8 @@ let rec substitue_type (t : ptype) (v : string) (t0 : ptype) : ptype =
     Var v1 when v1 = v -> t0
   | Var v2 -> Var v2
   | Arr (t1, t2) -> Arr (substitue_type t1 v t0, substitue_type t2 v t0) 
+  | Prod (t1, t2) -> Prod (substitue_type t1 v t0, substitue_type t2 v t0)
+  | Sum (t1, t2) -> Sum (substitue_type t1 v t0, substitue_type t2 v t0)
   | Nat -> Nat 
 
 (* remplace une variable par un type dans une liste d'équations*)
@@ -79,15 +92,30 @@ let rec genere_equa (te : pterm) (ty : ptype) (e : env) : equa =
       and nv2 : string = nouvelle_var () in
       let eq1 : equa = genere_equa t1 (Var nv1) e in
       let eq2 : equa = genere_equa t2 (Var nv2) e in
-      (ty, Arr (Var nv1, Var nv2))::(eq1 @ eq2)
-  | Fst t1 -> let nv1 : string = nouvelle_var () 
+      (ty, Prod (Var nv1, Var nv2))::(eq1 @ eq2)
+  | ProdG t1 -> let nv1 : string = nouvelle_var () 
       and nv2 : string = nouvelle_var () in
-      let eq1 : equa = genere_equa t1 (Arr (Var nv1, Var nv2)) e in
+      let eq1 : equa = genere_equa t1 (Prod (Var nv1, Var nv2)) e in
       (ty, Var nv1)::eq1
-  | Snd t1 -> let nv1 : string = nouvelle_var () 
+  | ProdD t1 -> let nv1 : string = nouvelle_var () 
       and nv2 : string = nouvelle_var () in
-      let eq1 : equa = genere_equa t1 (Arr (Var nv1, Var nv2)) e in
+      let eq1 : equa = genere_equa t1 (Prod (Var nv1, Var nv2)) e in
       (ty, Var nv2)::eq1
+  | SumG t1 -> let nv1 : string = nouvelle_var () 
+      and nv2 : string = nouvelle_var () in
+      let eq1 : equa = genere_equa t1 (Var nv1) e in
+      (ty, Sum (Var nv1, Var nv2))::eq1
+  | SumD t1 -> let nv1 : string = nouvelle_var () 
+      and nv2 : string = nouvelle_var () in
+      let eq1 : equa = genere_equa t1 (Var nv2) e in
+      (ty, Sum (Var nv1, Var nv2))::eq1
+  | MatchSum (t0, x1, t1, x2, t2) -> let nv1 : string = nouvelle_var () 
+      and nv2 : string = nouvelle_var () 
+      and nv_sum : string = nouvelle_var () in
+      let eq0 = genere_equa t0 (Sum (Var nv1, Var nv2)) e in
+      let eq1 = genere_equa t1 (Var nv_sum) ((x1, Var nv1)::e) in
+      let eq2 = genere_equa t2 (Var nv_sum) ((x2, Var nv2)::e) in
+      (ty, Var nv_sum) :: (eq0 @ eq1 @ eq2)
       
 exception Echec_unif of string 
 (* rembobine le zipper *)
@@ -129,7 +157,16 @@ let rec unification (e : equa_zip) (but : string) : ptype =
     (* types fleche à droite pas à gauche : echec  *)
   | (_, (t3, Arr (_,_))::_) -> raise (Echec_unif ("type fleche non-unifiable avec "^(print_type t3)))     
     (* types nat des deux cotes : on passe *)
-  | (e1, (Nat, Nat)::e2) -> unification (e1, e2) but     
+  | (e1, (Nat, Nat)::e2) -> unification (e1, e2) but
+  | (e1 , (Sum(t1,t2), Sum(t3,t4))::e2) -> unification (e1, (t1, t3)::(t2, t4)::e2) but
+  | (_, (Sum(_,_), Prod(t3,t4))::_) -> raise (Echec_unif ("type somme non-unifiable avec "^(print_type (Prod(t3,t4)))))
+  | (_, (Prod(t3,t4), Sum(_,_))::_) -> raise (Echec_unif ("type somme non-unifiable avec "^(print_type (Prod(t3,t4)))))
+  | (_, (Sum(_, _), t3)::_) -> raise (Echec_unif ("type somme non-unifiable avec "^(print_type t3)))     
+  | (_, (t3, Sum(_, _))::_) -> raise (Echec_unif ("type somme non-unifiable avec "^(print_type t3)))
+    (* types produit des deux cotes : on decompose  *)
+  | (e1 , (Prod(t1,t2), Prod(t3,t4))::e2) -> unification (e1, (t1, t3)::(t2, t4)::e2) but
+  | (_, (Prod(_, _), t3)::_) -> raise (Echec_unif ("type produit non-unifiable avec "^(print_type t3)))     
+  | (_, (t3, Prod(_, _))::_) -> raise (Echec_unif ("type produit non-unifiable avec "^(print_type t3)))     
                                        
 (* enchaine generation d'equation et unification *)                                   
 let inference (t : pterm) : string =

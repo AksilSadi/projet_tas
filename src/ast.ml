@@ -2,7 +2,8 @@
 type pterm = Var of string 
 | App of pterm * pterm 
 | Abs of string * pterm 
-| N of int 
+| N of int
+| Liste of pterm list
 | Add of pterm * pterm 
 | Ifz of pterm * pterm * pterm 
 | Succ of pterm 
@@ -13,6 +14,11 @@ type pterm = Var of string
 | SumG of pterm
 | SumD of pterm
 | MatchSum of pterm * string * pterm * string * pterm
+| Let of string * pterm * pterm              
+| Fix of string * pterm                      
+| Hd of pterm                                
+| Tl of pterm                                
+| IfEmpty of pterm * pterm * pterm           
 (* correspond à sw M ▷ x1 -> N1 | x2 -> N2 *)
 (* Types *) 
 type ptype = Var of string 
@@ -20,6 +26,8 @@ type ptype = Var of string
 | Nat
 | Prod of ptype * ptype
 | Sum of ptype * ptype
+| List of ptype  (* [T] pour les listes *)
+| Forall of string * ptype (* ∀X.T pour le let-polymorphisme *)
 (* Environnements de typage *) 
 type env = (string * ptype) list 
 (* Listes d'équations *) 

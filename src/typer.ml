@@ -17,13 +17,23 @@ let rec print_term (t : pterm) : string =
     | SumG t1 -> "(inl " ^ (print_term t1) ^ ")"
     | SumD t1 -> "(inr " ^ (print_term t1) ^ ")"
     | MatchSum (t0, x1, t1, x2, t2) -> "(match " ^ (print_term t0) ^ " with inl " ^ x1 ^ " -> " ^ (print_term t1) ^ " | inr " ^ x2 ^ " -> " ^ (print_term t2) ^ ")"
-    
+    | Let (x, t1, t2) -> "(let " ^ x ^ " = " ^ (print_term t1) ^ " in " ^ (print_term t2) ^ ")"
+    | Fix (f, t1) -> "(fix " ^ f ^ " . " ^ (print_term t1) ^ ")"
+    | Hd t1 -> "(hd " ^ (print_term t1) ^ ")"
+    | Tl t1 -> "(tl " ^ (print_term t1) ^ ")"
+    | IfEmpty (t1, t2, t3) -> "(ifempty " ^ (print_term t1) ^ " then " ^ (print_term t2) ^ " else " ^ (print_term t3) ^ ")"
+
 (* pretty printer de types*)                    
 let rec print_type (t : ptype) : string =
   match t with
     Var x -> x
   | Arr (t1, t2) -> "(" ^ (print_type t1) ^" -> "^ (print_type t2) ^")"
-  | Nat -> "Nat" 
+  | Prod (t1, t2) -> "(" ^ (print_type t1) ^" × "^ (print_type t2) ^")"
+  | Sum (t1, t2) -> "(" ^ (print_type t1) ^" + "^ (print_type t2) ^")"
+  | Nat -> "Nat"
+  | List t -> "[" ^ print_type t ^ "]"
+  | Forall (x, t) -> "∀" ^ x ^ "." ^ print_type t
+
 (* générateur de noms frais de variables de types *)
 let compteur_var : int ref = ref 0                    
 
@@ -157,12 +167,12 @@ let rec unification (e : equa_zip) (but : string) : ptype =
     (* types nat des deux cotes : on passe *)
   | (e1, (Nat, Nat)::e2) -> unification (e1, e2) but
   | (e1 , (Sum(t1,t2), Sum(t3,t4))::e2) -> unification (e1, (t1, t3)::(t2, t4)::e2) but
-  | (e1, (Sum(t1,t2), Prod(t3,t4))::e2) -> raise (Echec_unif ("type somme non-unifiable avec "^(print_type (Prod(t3,t4)))))
+  | (_, (Sum(_,_), Prod(t3,t4))::_) -> raise (Echec_unif ("type somme non-unifiable avec "^(print_type (Prod(t3,t4)))))
+  | (_, (Prod(t3,t4), Sum(_,_))::_) -> raise (Echec_unif ("type somme non-unifiable avec "^(print_type (Prod(t3,t4)))))
   | (_, (Sum(_, _), t3)::_) -> raise (Echec_unif ("type somme non-unifiable avec "^(print_type t3)))     
   | (_, (t3, Sum(_, _))::_) -> raise (Echec_unif ("type somme non-unifiable avec "^(print_type t3)))
     (* types produit des deux cotes : on decompose  *)
   | (e1 , (Prod(t1,t2), Prod(t3,t4))::e2) -> unification (e1, (t1, t3)::(t2, t4)::e2) but
-  | (e1, (Prod(t1,t2), Sum(t3,t4))::e2) -> raise (Echec_unif ("type produit non-unifiable avec "^(print_type (Sum(t3,t4)))))
   | (_, (Prod(_, _), t3)::_) -> raise (Echec_unif ("type produit non-unifiable avec "^(print_type t3)))     
   | (_, (t3, Prod(_, _))::_) -> raise (Echec_unif ("type produit non-unifiable avec "^(print_type t3)))     
                                        
