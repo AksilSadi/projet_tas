@@ -124,6 +124,54 @@ let rec genere_equa (te : pterm) (ty : ptype) (e : env) : equa =
       let eq1 = genere_equa t1 (Var nv_sum) ((x1, Var nv1)::e) in
       let eq2 = genere_equa t2 (Var nv_sum) ((x2, Var nv2)::e) in
       (ty, Var nv_sum) :: (eq0 @ eq1 @ eq2)
+  | Hd t1 ->
+    let nv = nouvelle_var () in
+    let eq1 = genere_equa t1 (List (Var nv)) e in
+    (ty, Var nv) :: eq1
+
+  | Tl t1 ->
+    let nv = nouvelle_var () in
+    let eq1 = genere_equa t1 (List (Var nv)) e in
+    (ty, List (Var nv)) :: eq1
+
+  | IfEmpty (t1, t2, t3) ->
+    let nv = nouvelle_var () in
+    let eq1 = genere_equa t1 (List (Var nv)) e in
+    let eq2 = genere_equa t2 ty e in
+    let eq3 = genere_equa t3 ty e in
+    eq1 @ eq2 @ eq3
+
+  | Let (x, t1, t2) ->
+    let nv = nouvelle_var () in
+    let eq1 = genere_equa t1 (Var nv) e in
+    let eq2 = genere_equa t2 ty ((x, Var nv)::e) in
+    eq1 @ eq2
+
+  | Fix (f, t1) ->
+    let nv1 = nouvelle_var () in
+    let nv2 = nouvelle_var () in
+    let eq1 = genere_equa t1 (Arr (Var nv1, Var nv2)) ((f, Arr (Var nv1, Var nv2))::e) in
+    (ty, Var nv2) :: eq1
+
+
+let rec vars_libres_type (t : ptype) : string list =
+  match t with
+  | Var x -> [x]
+  | Arr (t1, t2)
+  | Prod (t1, t2)
+  | Sum (t1, t2) -> vars_libres_type t1 @ vars_libres_type t2
+  | List t1 -> vars_libres_type t1
+  | Forall (x, t1) ->
+      List.filter (fun y -> y <> x) (vars_libres_type t1)
+  | Nat -> []
+
+
+let generalise (env : env) (t : ptype) : ptype =
+  let vars_env = List.flatten (List.map (fun (_, ty) -> vars_libres_type ty) env) in
+  let vars_t = vars_libres_type t in
+  let libres = List.filter (fun x -> not (List.mem x vars_env)) vars_t in
+  List.fold_right (fun x acc -> Forall (x, acc)) libres t
+
       
 exception Echec_unif of string 
 (* rembobine le zipper *)
@@ -160,6 +208,18 @@ let rec unification (e : equa_zip) (but : string) : ptype =
   | (e1, (t1, Var v2)::e2) ->  if appartient_type v2 t1 then raise (Echec_unif ("occurence de "^ v2 ^" dans " ^(print_type t1))) else  unification (substitue_type_zip (rembobine (e1,e2)) v2 t1) but 
     (* types fleche des deux cotes : on decompose  *)
   | (e1, (Arr (t1,t2), Arr (t3, t4))::e2) -> unification (e1, (t1, t3)::(t2, t4)::e2) but 
+  | (e1, (List t1, List t2)::e2) -> unification (e1, (t1, t2)::e2) but
+  | (e1, (Forall (x, t1), t2)::e2) ->
+    let nv = nouvelle_var () in
+    let t1' = substitue_type t1 x (Var nv) in
+    unification (e1, (t1', t2)::e2) but
+
+  | (e1, (t1, Forall (x, t2))::e2) ->
+    let nv = nouvelle_var () in
+    let t2' = substitue_type t2 x (Var nv) in
+    unification (e1, (t1, t2')::e2) but
+
+
     (* types fleche à gauche pas à droite : echec  *)
   | (_, (Arr (_,_), t3)::_) -> raise (Echec_unif ("type fleche non-unifiable avec "^(print_type t3)))     
     (* types fleche à droite pas à gauche : echec  *)
