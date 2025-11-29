@@ -52,16 +52,6 @@ and string_of_pterm_list (lst : pterm liste) : string =
   "[" ^ aux_list lst ^ "]"
 
 
-let rec string_of_pterm_list (lst : pterm liste) : string =
-  let rec aux_list l =
-    match l with
-    | Empty -> ""
-    | Cons (head, Empty) ->
-        print_term head
-    | Cons (head, tail) ->
-        print_term head ^ "," ^ aux_list tail
-  in
-  "[" ^ aux_list lst ^ "]"
 
 (* pretty printer de types*)                    
 let rec print_type (t : ptype) : string =
@@ -72,7 +62,10 @@ let rec print_type (t : ptype) : string =
   | Sum (t1, t2) -> "(" ^ (print_type t1) ^" + "^ (print_type t2) ^")"
   | Nat -> "Nat"
   | List t -> "[" ^ print_type t ^ "]"
-  | Forall (x, t) -> "∀" ^ x ^ "." ^ print_type t
+  | Forall (xs, t) ->
+    let vars = String.concat "," xs in
+    "∀" ^ vars ^ "." ^ print_type t
+
 
 (* générateur de noms frais de variables de types *)
 let compteur_var : int ref = ref 0                    
@@ -109,11 +102,12 @@ let rec substitue_type (t : ptype) (v : string) (t0 : ptype) : ptype =
   | Sum (t1, t2) -> Sum (substitue_type t1 v t0, substitue_type t2 v t0)
   | Nat -> Nat
   | List t1 -> List (substitue_type t1 v t0)
-  | Forall (x, body) ->
-    if v = x then
-        Forall (x, body)   (* pas de substitution si v est liée *)
+  | Forall (xs, body) ->
+    if List.mem v xs then
+        Forall (xs, body)   (* v est liée → on ne substitue pas *)
     else
-        Forall (x, substitue_type body v t0)
+        Forall (xs, substitue_type body v t0)
+
 
 (* remplace une variable par un type dans une liste d'équations*)
 let substitue_type_partout (e : equa) (v : string) (t0 : ptype) : equa =
@@ -170,7 +164,7 @@ let rec genere_equa (te : pterm) (ty : ptype) (e : env) : equa =
       let eq1 = genere_equa t1 (Var nv_sum) ((x1, Var nv1)::e) in
       let eq2 = genere_equa t2 (Var nv_sum) ((x2, Var nv2)::e) in
       (ty, Var nv_sum) :: (eq0 @ eq1 @ eq2)
-  | List myList ->
+  | Liste myList ->
       let a = Var (nouvelle_var ()) in
       let rec generate_list_equa (l : pterm liste) (a : ptype) : equa =
         match l with
@@ -228,8 +222,9 @@ let rec vars_libres_type (t : ptype) : string list =
   | Prod (t1, t2)
   | Sum (t1, t2) -> vars_libres_type t1 @ vars_libres_type t2
   | List t1 -> vars_libres_type t1
-  | Forall (x, t1) ->
-      List.filter (fun y -> y <> x) (vars_libres_type t1)
+  | Forall (xs, t1) ->
+    List.filter (fun y -> not (List.mem y xs)) (vars_libres_type t1)
+
   | Nat -> []
 
 
@@ -237,7 +232,9 @@ let generalise (env : env) (t : ptype) : ptype =
   let vars_env = List.flatten (List.map (fun (_, ty) -> vars_libres_type ty) env) in
   let vars_t = vars_libres_type t in
   let libres = List.filter (fun x -> not (List.mem x vars_env)) vars_t in
-  List.fold_right (fun x acc -> Forall (x, acc)) libres t
+  match libres with
+| [] -> t
+| xs -> Forall (xs, t)
 
       
 exception Echec_unif of string 
@@ -266,15 +263,25 @@ let rec unification (e : equa_zip) (but : string) : ptype =
     (* on a passé toutes les équations : succes *)
     (_, []) -> (try trouve_but (rembobine e) but with VarPasTrouve -> raise (Echec_unif "but pas trouvé"))
     (* equation avec but : on passe *)
-  | (e1, (Forall (x, t1), t2)::e2) ->
-    let nv = nouvelle_var () in
-    let t1' = substitue_type t1 x (Var nv) in
+  | (e1, (Forall (xs, t1), t2)::e2) ->
+    let fresh = List.map (fun _ -> Var (nouvelle_var ())) xs in
+    let t1' =
+      List.fold_left2
+        (fun acc x newv -> substitue_type acc x newv)
+        t1 xs fresh
+    in
     unification (e1, (t1', t2)::e2) but
 
-  | (e1, (t1, Forall (x, t2))::e2) ->
-    let nv = nouvelle_var () in
-    let t2' = substitue_type t2 x (Var nv) in
-    unification (e1, (t1, t2')::e2) but
+  | (e1, (t1, Forall (xs, t2))::e2) ->
+     let fresh = List.map (fun _ -> Var (nouvelle_var ())) xs in
+     let t2' =
+      List.fold_left2
+        (fun acc x newv -> substitue_type acc x newv)
+        t2 xs fresh
+     in
+     unification (e1, (t1, t2')::e2) but
+
+
   | (e1, (Var v1, t2)::e2) when v1 = but ->  unification ((Var v1, t2)::e1, e2) but
     (* deux variables : remplacer l'une par l'autre *)
   | (e1, (Var v1, Var v2)::e2) ->  unification (substitue_type_zip (rembobine (e1,e2)) v2 (Var v1)) but

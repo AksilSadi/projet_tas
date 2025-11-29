@@ -14,14 +14,13 @@
 #  ; build_dir = In_build_dir "default"
 #  ; instrument_with = []
 #  }
-$ C:\Users\DELL\AppData\Local\opam-testing\default\bin\ocamlc.opt.exe -config > C:\Users\DELL\AppData\Local\Temp\dune_6655f3_output
-$ (cd _build/default && C:\Users\DELL\AppData\Local\opam-testing\default\bin\ocamldep.opt.exe -modules -impl src/ast.ml) > _build/default/src/.tas_lib.objs/tas_lib__Ast.impl.d
-$ (cd _build/default && C:\Users\DELL\AppData\Local\opam-testing\default\bin\ocamlc.opt.exe -w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -g -bin-annot -I src/.tas_lib.objs/byte -no-alias-deps -opaque -open Tas_lib -o src/.tas_lib.objs/byte/tas_lib__Ast.cmo -c -impl src/ast.ml)
+$ C:\Users\DELL\AppData\Local\opam-testing\default\bin\ocamlc.opt.exe -config > C:\Users\DELL\AppData\Local\Temp\dune_41bdbe_output
+$ (cd _build/default && C:\Users\DELL\AppData\Local\opam-testing\default\bin\ocamldep.opt.exe -modules -impl src/typer.ml) > _build/default/src/.tas_lib.objs/tas_lib__Typer.impl.d
 $ (cd _build/default && C:\Users\DELL\AppData\Local\opam-testing\default\bin\ocamlc.opt.exe -w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -g -bin-annot -I src/.tas_lib.objs/byte -no-alias-deps -opaque -open Tas_lib -o src/.tas_lib.objs/byte/tas_lib__Typer.cmo -c -impl src/typer.ml)
-> File "src/typer.ml", line 32, characters 41-43:
-> 32 |     | Liste t1 -> "(liste " ^ print_term t1 ^ ")"
->                                               ^^
-> Error: This expression has type pterm liste
->        but an expression was expected of type pterm
-[2]
-$ (cd _build/default && C:\Users\DELL\AppData\Local\opam-testing\default\bin\ocamlopt.opt.exe -w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -g -I src/.tas_lib.objs/byte -I src/.tas_lib.objs/native -intf-suffix .ml -no-alias-deps -opaque -open Tas_lib -o src/.tas_lib.objs/native/tas_lib__Ast.cmx -c -impl src/ast.ml)
+$ (cd _build/default && C:\Users\DELL\AppData\Local\opam-testing\default\bin\ocamlc.opt.exe -w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -g -a -o src/tas_lib.cma src/.tas_lib.objs/byte/tas_lib.cmo src/.tas_lib.objs/byte/tas_lib__Utils.cmo src/.tas_lib.objs/byte/tas_lib__Ast.cmo src/.tas_lib.objs/byte/tas_lib__Typer.cmo src/.tas_lib.objs/byte/tas_lib__Evaluator.cmo)
+$ (cd _build/default && C:\Users\DELL\AppData\Local\opam-testing\default\bin\ocamlc.opt.exe -w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -g -bin-annot -I src/.main.eobjs/byte -I src/.tas_lib.objs/byte -no-alias-deps -opaque -o src/.main.eobjs/byte/dune__exe__Main.cmi -c -intf src/main.mli)
+$ (cd _build/default && C:\Users\DELL\AppData\Local\opam-testing\default\bin\ocamlopt.opt.exe -w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -g -I src/.tas_lib.objs/byte -I src/.tas_lib.objs/native -intf-suffix .ml -no-alias-deps -opaque -open Tas_lib -o src/.tas_lib.objs/native/tas_lib__Typer.cmx -c -impl src/typer.ml)
+$ (cd _build/default && C:\Users\DELL\AppData\Local\opam-testing\default\bin\ocamlopt.opt.exe -w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -g -I src/.main.eobjs/byte -I src/.main.eobjs/native -I src/.tas_lib.objs/byte -I src/.tas_lib.objs/native -intf-suffix .ml -no-alias-deps -opaque -o src/.main.eobjs/native/dune__exe__Main.cmx -c -impl src/main.ml)
+$ (cd _build/default && C:\Users\DELL\AppData\Local\opam-testing\default\bin\ocamlopt.opt.exe -w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -g -a -o src/tas_lib.cmxa src/.tas_lib.objs/native/tas_lib.cmx src/.tas_lib.objs/native/tas_lib__Utils.cmx src/.tas_lib.objs/native/tas_lib__Ast.cmx src/.tas_lib.objs/native/tas_lib__Typer.cmx src/.tas_lib.objs/native/tas_lib__Evaluator.cmx)
+$ (cd _build/default && C:\Users\DELL\AppData\Local\opam-testing\default\bin\ocamlopt.opt.exe -w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -g -shared -linkall -I src -o src/tas_lib.cmxs src/tas_lib.cmxa)
+$ (cd _build/default && C:\Users\DELL\AppData\Local\opam-testing\default\bin\ocamlopt.opt.exe -w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -g -o src/main.exe src/tas_lib.cmxa src/.main.eobjs/native/dune__exe__Main.cmx)
