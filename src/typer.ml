@@ -315,7 +315,6 @@ let rec unification (e : equa_zip) (but : string) : ptype =
   | (_, (Prod(_, _), t3)::_) -> raise (Echec_unif ("type produit non-unifiable avec "^(print_type t3)))     
   | (_, (t3, Prod(_, _))::_) -> raise (Echec_unif ("type produit non-unifiable avec "^(print_type t3)))     
                                        
-(* enchaine generation d'equation et unification *)
 
 let rec inference_with_env (t : pterm) (env : env) : ptype =
   match t with

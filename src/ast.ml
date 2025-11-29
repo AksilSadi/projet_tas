@@ -20,7 +20,6 @@ type pterm = Var of string
 | Hd of pterm                                
 | Tl of pterm                                
 | IfEmpty of pterm * pterm * pterm           
-(* correspond à sw M ▷ x1 -> N1 | x2 -> N2 *)
 (* Types *)
 type ptype = Var of string 
 | Arr of ptype * ptype 
