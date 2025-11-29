@@ -65,6 +65,9 @@ let rec print_type (t : ptype) : string =
   | Forall (xs, t) ->
     let vars = String.concat "," xs in
     "∀" ^ vars ^ "." ^ print_type t
+  | UnitT -> "Unit"
+  | RefT t1 -> "Ref " ^ print_type t1
+  | AddrT -> "Addr"
 
 
 (* générateur de noms frais de variables de types *)
