@@ -41,6 +41,11 @@ let rec print_term (t : pterm) : string =
   | IfEmpty (t1, t2, t3) ->
       "(ifempty " ^ print_term t1 ^ " then " ^ print_term t2 ^ " else " ^ print_term t3 ^ ")"
   | Liste lst -> string_of_pterm_list lst
+  | Unit -> "()"
+  | Ref t1 -> "(ref " ^ print_term t1 ^ ")"
+  | DeRef t1 -> "(!" ^ print_term t1 ^ ")"
+  | Assign (t1, t2) -> "(" ^ print_term t1 ^ " := " ^ print_term t2 ^ ")"
+  | Address addr -> "(addr " ^ string_of_int addr ^ ")"
 
 and string_of_pterm_list (lst : pterm liste) : string =
   let rec aux_list l =
@@ -93,6 +98,12 @@ let rec appartient_type (v : string) (t : ptype) : bool =
   | Arr (t1, t2) -> (appartient_type v t1) || (appartient_type v t2) 
   | Prod (t1, t2) -> (appartient_type v t1) || (appartient_type v t2)
   | Sum (t1, t2) -> (appartient_type v t1) || (appartient_type v t2)
+  | List t1 -> appartient_type v t1
+  | Forall (xs, body) -> not (List.mem v xs) && (appartient_type v body)
+  | Nat -> false
+  | UnitT -> false
+  | RefT t1 -> appartient_type v t1
+  | AddrT -> false
   | _ -> false
 
 (* remplace une variable par un type dans type *)
@@ -110,6 +121,9 @@ let rec substitue_type (t : ptype) (v : string) (t0 : ptype) : ptype =
         Forall (xs, body)   (* v est liée → on ne substitue pas *)
     else
         Forall (xs, substitue_type body v t0)
+  | UnitT -> UnitT
+  | RefT t1 -> RefT (substitue_type t1 v t0)
+  | AddrT -> AddrT
 
 
 (* remplace une variable par un type dans une liste d'équations*)
@@ -217,6 +231,21 @@ let rec genere_equa (te : pterm) (ty : ptype) (e : env) : equa =
 
   | Fix _ -> failwith "Fix doit recevoir une abstraction"
 
+  | Unit ->[(ty, UnitT)]
+  | Ref t1 ->
+    let nv = nouvelle_var () in
+    let eq1 = genere_equa t1 (Var nv) e in
+    (ty, RefT (Var nv)) :: eq1
+  | DeRef t1 ->
+    let nv = nouvelle_var () in
+    let eq1 = genere_equa t1 (RefT (Var nv)) e in
+    (ty, Var nv) :: eq1
+  | Assign (t1, t2) ->
+    let nv = nouvelle_var () in
+    let eq1 = genere_equa t1 (RefT (Var nv)) e in
+    let eq2 = genere_equa t2 (Var nv) e in
+    (ty, UnitT) :: (eq1 @ eq2)
+  | Address _ -> [(ty, AddrT)]
 
 let rec vars_libres_type (t : ptype) : string list =
   match t with
@@ -229,6 +258,9 @@ let rec vars_libres_type (t : ptype) : string list =
     List.filter (fun y -> not (List.mem y xs)) (vars_libres_type t1)
 
   | Nat -> []
+  | UnitT -> []
+  | RefT t1 -> vars_libres_type t1
+  | AddrT -> []
 
 
 let generalise (env : env) (t : ptype) : ptype =
@@ -296,11 +328,9 @@ let rec unification (e : equa_zip) (but : string) : ptype =
   | (e1, (Arr (t1,t2), Arr (t3, t4))::e2) -> unification (e1, (t1, t3)::(t2, t4)::e2) but 
   | (e1, (List t1, List t2)::e2) ->
     unification (e1, (t1, t2)::e2) but
-
+    (* types liste à gauche pas à droite : echec  *)
   | (_, (List _, t2)::_) -> raise (Echec_unif ("type liste non-unifiable avec "^ print_type t2))
   | (_, (t1, List _)::_) -> raise (Echec_unif ("type "^ print_type t1 ^" non-unifiable avec liste"))
-
-
 
     (* types fleche à gauche pas à droite : echec  *)
   | (_, (Arr (_,_), t3)::_) -> raise (Echec_unif ("type fleche non-unifiable avec "^(print_type t3)))     
@@ -316,7 +346,19 @@ let rec unification (e : equa_zip) (but : string) : ptype =
     (* types produit des deux cotes : on decompose  *)
   | (e1 , (Prod(t1,t2), Prod(t3,t4))::e2) -> unification (e1, (t1, t3)::(t2, t4)::e2) but
   | (_, (Prod(_, _), t3)::_) -> raise (Echec_unif ("type produit non-unifiable avec "^(print_type t3)))     
-  | (_, (t3, Prod(_, _))::_) -> raise (Echec_unif ("type produit non-unifiable avec "^(print_type t3)))     
+  | (_, (t3, Prod(_, _))::_) -> raise (Echec_unif ("type produit non-unifiable avec "^(print_type t3)))
+  | (e1, (RefT t1, RefT t2)::e2) -> unification (e1, (t1, t2)::e2) but
+  | (_, (RefT _, t3)::_) -> raise (Echec_unif ("type référence non-unifiable avec "^(print_type t3)))
+  | (_, (t3, RefT _)::_) -> raise (Echec_unif ("type référence non-unifiable avec "^(print_type t3)))
+  | (e1, (UnitT, UnitT)::e2) -> unification (e1, e2) but
+  | (_, (UnitT, t3)::_) -> raise (Echec_unif ("type unité non-unifiable avec "^(print_type t3)))
+  | (_, (t3, UnitT)::_) -> raise (Echec_unif ("type unité non-unifiable avec "^(print_type t3)))
+  | (e1, (AddrT, AddrT)::e2) -> unification (e1, e2) but
+  | (_, (AddrT, t3)::_) -> raise (Echec_unif ("type adresse non-unifiable avec "^(print_type t3)))
+  | (_, (t3, AddrT)::_) -> raise (Echec_unif ("type adresse non-unifiable avec "^(print_type t3)))
+    (* cas non prévu : échec *)
+  | _ -> raise (Echec_unif "cas non prévu dans l'unification")
+       
                                        
 
 let rec inference_with_env (t : pterm) (env : env) : ptype =
