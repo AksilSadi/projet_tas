@@ -38,7 +38,11 @@ type ptype = Var of string
 | RefT of ptype
 | AddrT
 (* Environnements de typage *) 
-type env = (string * ptype) list 
+type scheme =
+  | Strong of ptype    (* généralisation normale *)
+  | Weak of ptype ref     (* pas d’instanciation *)
+
+type env = (string * scheme) list
 (* Listes d'équations *) 
 type equa = (ptype * ptype) list
 (* zipper d'une liste d'équations *)

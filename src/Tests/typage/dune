@@ -1,0 +1,11 @@
+(executable
+ (name test_partie3)
+ (modules test_partie3)
+ (libraries tas_lib)
+)
+
+(executable
+ (name test_partie4)
+ (modules test_partie4)
+ (libraries tas_lib)
+)

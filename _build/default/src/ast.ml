@@ -1,4 +1,5 @@
 type 'a liste = Empty | Cons of 'a *'a liste 
+type address = int
 (* Termes *)
 type pterm = Var of string 
 | App of pterm * pterm 
@@ -19,7 +20,12 @@ type pterm = Var of string
 | Fix of pterm                      
 | Hd of pterm                                
 | Tl of pterm                                
-| IfEmpty of pterm * pterm * pterm           
+| IfEmpty of pterm * pterm * pterm
+| Unit
+| Ref of pterm
+| DeRef of pterm
+| Assign of pterm * pterm
+| Address of address           
 (* Types *)
 type ptype = Var of string 
 | Arr of ptype * ptype 
@@ -28,8 +34,15 @@ type ptype = Var of string
 | Sum of ptype * ptype
 | List of ptype  (* [T] pour les listes *)
 | Forall of string list * ptype
+| UnitT
+| RefT of ptype
+| AddrT
 (* Environnements de typage *) 
-type env = (string * ptype) list 
+type scheme =
+  | Strong of ptype    (* généralisation normale *)
+  | Weak of ptype ref     (* pas d’instanciation *)
+
+type env = (string * scheme) list
 (* Listes d'équations *) 
 type equa = (ptype * ptype) list
 (* zipper d'une liste d'équations *)

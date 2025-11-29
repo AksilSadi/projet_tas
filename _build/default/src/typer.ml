@@ -9,6 +9,43 @@ let generalise : env -> ptype -> ptype =
 
 
 
+let rec expansif (t : pterm) : bool =
+  match t with
+  (* Valeurs de base non-expansives *)
+  | Var _ -> false
+  | N _ -> false
+  | Unit -> false
+  | Address _ -> false
+  | Liste _ -> false
+  | Couple _ -> false
+
+  (* Abstraction : non-expansive *)
+  | Abs (_, _) -> false
+
+  (* Application : non-expansive SEULEMENT si t1 et t2 le sont *)
+  | App (t1, t2) -> expansif t1 || expansif t2
+
+  (* Let : non-expansif seulement si t1 est non-expansif *)
+  | Let (_, t1, _) -> expansif t1 
+
+  (* Tout le reste est expansif *)
+  | Ref _ -> true
+  | DeRef _ -> true
+  | Assign _ -> true
+  | Fix _ -> true
+  | Add _ -> true
+  | Succ _ -> true
+  | Pred _ -> true
+  | Ifz _ -> true
+  | Hd _ -> true
+  | Tl _ -> true
+  | IfEmpty _ -> true
+  | SumG _ -> true
+  | SumD _ -> true
+  | ProdG _ -> true
+  | ProdD _ -> true
+  | MatchSum _ -> true
+
 
 
 
@@ -41,6 +78,11 @@ let rec print_term (t : pterm) : string =
   | IfEmpty (t1, t2, t3) ->
       "(ifempty " ^ print_term t1 ^ " then " ^ print_term t2 ^ " else " ^ print_term t3 ^ ")"
   | Liste lst -> string_of_pterm_list lst
+  | Unit -> "()"
+  | Ref t1 -> "(ref " ^ print_term t1 ^ ")"
+  | DeRef t1 -> "(!" ^ print_term t1 ^ ")"
+  | Assign (t1, t2) -> "(" ^ print_term t1 ^ " := " ^ print_term t2 ^ ")"
+  | Address addr -> "(addr " ^ string_of_int addr ^ ")"
 
 and string_of_pterm_list (lst : pterm liste) : string =
   let rec aux_list l =
@@ -65,32 +107,20 @@ let rec print_type (t : ptype) : string =
   | Forall (xs, t) ->
     let vars = String.concat "," xs in
     "∀" ^ vars ^ "." ^ print_type t
+  | UnitT -> "Unit"
+  | RefT t1 -> "Ref " ^ print_type t1
+  | AddrT -> "Addr"
 
 
 (* générateur de noms frais de variables de types *)
-let compteur_var : int ref = ref 0                    
+let compteur_var : int ref = ref 0
+let global_env : env ref = ref []                    
 
 let nouvelle_var () : string = compteur_var := !compteur_var + 1; 
   "T"^(string_of_int !compteur_var)
 
 
 exception VarPasTrouve
-
-(* cherche le type d'une variable dans un environnement *)
-let rec cherche_type (v : string) (e : env) : ptype =
-  match e with
-    [] -> raise VarPasTrouve
-  | (v1, t1)::_ when v1 = v -> t1
-  | (_, _):: q -> (cherche_type v q) 
-
-(* vérificateur d'occurence de variables *)  
-let rec appartient_type (v : string) (t : ptype) : bool =
-  match t with
-    Var v1 when v1 = v -> true
-  | Arr (t1, t2) -> (appartient_type v t1) || (appartient_type v t2) 
-  | Prod (t1, t2) -> (appartient_type v t1) || (appartient_type v t2)
-  | Sum (t1, t2) -> (appartient_type v t1) || (appartient_type v t2)
-  | _ -> false
 
 (* remplace une variable par un type dans type *)
 let rec substitue_type (t : ptype) (v : string) (t0 : ptype) : ptype =
@@ -107,6 +137,61 @@ let rec substitue_type (t : ptype) (v : string) (t0 : ptype) : ptype =
         Forall (xs, body)   (* v est liée → on ne substitue pas *)
     else
         Forall (xs, substitue_type body v t0)
+  | UnitT -> UnitT
+  | RefT t1 -> RefT (substitue_type t1 v t0)
+  | AddrT -> AddrT
+
+let fresh_typevar () = Var (nouvelle_var ())
+(*chatgpt m'aider a comprendre bien le polymorphisme faible et j'ai fait ce bout de code*)
+let instantiate = function
+  | Strong t ->
+      (* remplacer toutes les variables liées par des fraîches *)
+      let rec inst t =
+        match t with
+        | Var _ -> Var (nouvelle_var ())
+        | Arr(t1,t2) -> Arr(inst t1, inst t2)
+        | Prod(t1,t2) -> Prod(inst t1, inst t2)
+        | Sum(t1,t2) -> Sum(inst t1, inst t2)
+        | List t1 -> List (inst t1)
+        | Forall(xs,t1) ->
+               (* eliminer le ∀ et remplacer variables liées par fraîches *)
+               let freshes = List.map (fun _ -> Var(nouvelle_var())) xs in
+               List.fold_left2 substitue_type t1 xs freshes
+        | _ -> t
+      in inst t
+  | Weak t -> !t
+
+(* cherche le type d'une variable dans un environnement *)
+let rec cherche_type v env =
+  match env with
+  | [] -> raise VarPasTrouve
+
+  | (x, Strong t) :: _ when x = v ->
+      instantiate (Strong t)
+
+  | (x, Weak t) :: _ when x = v ->
+      !t
+
+  | _ :: q ->
+      cherche_type v q
+
+
+(* vérificateur d'occurence de variables *)  
+let rec appartient_type (v : string) (t : ptype) : bool =
+  match t with
+    Var v1 when v1 = v -> true
+  | Arr (t1, t2) -> (appartient_type v t1) || (appartient_type v t2) 
+  | Prod (t1, t2) -> (appartient_type v t1) || (appartient_type v t2)
+  | Sum (t1, t2) -> (appartient_type v t1) || (appartient_type v t2)
+  | List t1 -> appartient_type v t1
+  | Forall (xs, body) -> not (List.mem v xs) && (appartient_type v body)
+  | Nat -> false
+  | UnitT -> false
+  | RefT t1 -> appartient_type v t1
+  | AddrT -> false
+  | _ -> false
+
+
 
 
 (* remplace une variable par un type dans une liste d'équations*)
@@ -117,13 +202,22 @@ let substitue_type_partout (e : equa) (v : string) (t0 : ptype) : equa =
 let rec genere_equa (te : pterm) (ty : ptype) (e : env) : equa =
   match te with 
     Var v -> let tv : ptype = cherche_type v e in [(ty, tv)] 
-  | App (t1, t2) -> let nv : string = nouvelle_var () in
-      let eq1 : equa = genere_equa t1 (Arr (Var nv, ty)) e in
-      let eq2 : equa = genere_equa t2 (Var nv) e in
+  | App(t1, t2) ->
+    (* Vérifier que aucun Weak n'est copié *)
+    if List.exists (fun (_, sch) ->
+          match sch with Weak _ -> true | _ -> false)
+        e
+    then
+      failwith "cannot copy weak type (LetNE violation)"
+    else
+      let nv = nouvelle_var () in
+      let eq1 = genere_equa t1 (Arr(Var nv, ty)) e in
+      let eq2 = genere_equa t2 (Var nv) e in
       eq1 @ eq2
+
   | Abs (x, t) -> let nv1 : string = nouvelle_var () 
       and nv2 : string = nouvelle_var () in
-      (ty, Arr (Var nv1, Var nv2))::(genere_equa t (Var nv2) ((x, Var nv1)::e))  
+      (ty, Arr (Var nv1, Var nv2))::(genere_equa t (Var nv2) ((x, Weak (ref (Var nv1))) :: e))  
   | N _ -> [(ty, Nat)]
   | Add (t1, t2) -> let eq1 : equa = genere_equa t1 Nat e in
       let eq2 : equa = genere_equa t2 Nat e in
@@ -161,8 +255,8 @@ let rec genere_equa (te : pterm) (ty : ptype) (e : env) : equa =
       and nv2 : string = nouvelle_var () 
       and nv_sum : string = nouvelle_var () in
       let eq0 = genere_equa t0 (Sum (Var nv1, Var nv2)) e in
-      let eq1 = genere_equa t1 (Var nv_sum) ((x1, Var nv1)::e) in
-      let eq2 = genere_equa t2 (Var nv_sum) ((x2, Var nv2)::e) in
+      let eq1 = genere_equa t1 (Var nv_sum) ((x1, Strong (Var nv1)) :: e) in
+      let eq2 = genere_equa t2 (Var nv_sum) ((x2, Strong (Var nv2)) :: e) in
       (ty, Var nv_sum) :: (eq0 @ eq1 @ eq2)
   | Liste myList ->
       let a = Var (nouvelle_var ()) in
@@ -197,16 +291,24 @@ let rec genere_equa (te : pterm) (ty : ptype) (e : env) : equa =
   | Let (nom, t1, t2) ->
     let ty_fresh = Var (nouvelle_var ()) in
     let eqs_t1 = genere_equa t1 ty_fresh e in
-    let t1_inf = unification ([], eqs_t1) (match ty_fresh with Var v -> v | _ -> failwith "impossible") in
-    let t1_poly = generalise e t1_inf in
-    genere_equa t2 ty ((nom, t1_poly) :: e)
+    let t1_inf = unification ([], eqs_t1)
+        (match ty_fresh with Var v -> v | _ -> failwith "impossible") in
+    
+    let scheme =
+      if expansif t1 then
+        Weak (ref t1_inf)
+      else
+        Strong (generalise e t1_inf)
+    in
+
+    genere_equa t2 ty ((nom, scheme) :: e)
 
 
   | Fix (Abs (arg, body)) ->
     (* création de deux types frais pour l'entree et la sortie *)
     let t_in  = Var (nouvelle_var ()) in
     let t_out = Var (nouvelle_var ()) in
-    let env_ext = (arg, Arr (t_in, t_out)) :: e in
+    let env_ext = (arg, Strong (Arr (t_in, t_out))) :: e in
     let eq_body = genere_equa body (Arr (t_in, t_out)) env_ext in
 
     (* fix a lui-même type t_in -> t_out *)
@@ -214,6 +316,21 @@ let rec genere_equa (te : pterm) (ty : ptype) (e : env) : equa =
 
   | Fix _ -> failwith "Fix doit recevoir une abstraction"
 
+  | Unit ->[(ty, UnitT)]
+  | Ref t1 ->
+    let nv = nouvelle_var () in
+    let eq1 = genere_equa t1 (Var nv) e in
+    (ty, RefT (Var nv)) :: eq1
+  | DeRef t1 ->
+    let nv = nouvelle_var () in
+    let eq1 = genere_equa t1 (RefT (Var nv)) e in
+    (ty, Var nv) :: eq1
+  | Assign (t1, t2) ->
+    let nv = nouvelle_var () in
+    let eq1 = genere_equa t1 (RefT (Var nv)) e in
+    let eq2 = genere_equa t2 (Var nv) e in
+    (ty, UnitT) :: (eq1 @ eq2)
+  | Address _ -> [(ty, AddrT)]
 
 let rec vars_libres_type (t : ptype) : string list =
   match t with
@@ -226,10 +343,17 @@ let rec vars_libres_type (t : ptype) : string list =
     List.filter (fun y -> not (List.mem y xs)) (vars_libres_type t1)
 
   | Nat -> []
+  | UnitT -> []
+  | RefT t1 -> vars_libres_type t1
+  | AddrT -> []
 
 
 let generalise (env : env) (t : ptype) : ptype =
-  let vars_env = List.flatten (List.map (fun (_, ty) -> vars_libres_type ty) env) in
+  let vars_env = List.flatten (List.map (fun (_, sch) ->
+    match sch with
+    | Strong t -> vars_libres_type t
+    | Weak t   -> vars_libres_type !t
+) env) in
   let vars_t = vars_libres_type t in
   let libres = List.filter (fun x -> not (List.mem x vars_env)) vars_t in
   match libres with
@@ -256,6 +380,16 @@ let rec trouve_but (e : equa_zip) (but : string) =
   | (_, (Var v, t)::_) when v = but -> t
   | (_, (t, Var v)::_) when v = but -> t 
   | (e1, c::e2) -> trouve_but (c::e1, e2) but 
+
+
+let rec update_weak env v t =
+  match env with
+  | [] -> ()
+  | (x, Weak r) :: _ when x = v ->
+        r := t       (* ici on fige le type Weak ! *)
+  | _ :: q -> update_weak q v t
+
+
                      
 (* résout un système d'équations *) 
 let rec unification (e : equa_zip) (but : string) : ptype = 
@@ -286,18 +420,30 @@ let rec unification (e : equa_zip) (but : string) : ptype =
     (* deux variables : remplacer l'une par l'autre *)
   | (e1, (Var v1, Var v2)::e2) ->  unification (substitue_type_zip (rembobine (e1,e2)) v2 (Var v1)) but
     (* une variable à gauche : vérification d'occurence puis remplacement *)
-  | (e1, (Var v1, t2)::e2) ->  if appartient_type v1 t2 then raise (Echec_unif ("occurence de "^ v1 ^" dans "^(print_type t2))) else  unification (substitue_type_zip (rembobine (e1,e2)) v1 t2) but
+  | (e1, (Var v1, t2)::e2) ->
+    if appartient_type v1 t2 then
+      raise (Echec_unif ("occurence de "^ v1 ^" dans "^(print_type t2)))
+    else (
+      update_weak !global_env v1 t2;  
+      unification (substitue_type_zip (rembobine (e1,e2)) v1 t2) but
+    )
+
     (* une variable à droite : vérification d'occurence puis remplacement *)
-  | (e1, (t1, Var v2)::e2) ->  if appartient_type v2 t1 then raise (Echec_unif ("occurence de "^ v2 ^" dans " ^(print_type t1))) else  unification (substitue_type_zip (rembobine (e1,e2)) v2 t1) but 
+  | (e1, (t1, Var v2)::e2) ->
+    if appartient_type v2 t1 then
+      raise (Echec_unif ("occurence de "^ v2 ^" dans "^(print_type t1)))
+    else (
+      update_weak !global_env v2 t1;  (* <<< AJOUT ICI *)
+      unification (substitue_type_zip (rembobine (e1,e2)) v2 t1) but
+    )
+
     (* types fleche des deux cotes : on decompose  *)
   | (e1, (Arr (t1,t2), Arr (t3, t4))::e2) -> unification (e1, (t1, t3)::(t2, t4)::e2) but 
   | (e1, (List t1, List t2)::e2) ->
     unification (e1, (t1, t2)::e2) but
-
+    (* types liste à gauche pas à droite : echec  *)
   | (_, (List _, t2)::_) -> raise (Echec_unif ("type liste non-unifiable avec "^ print_type t2))
   | (_, (t1, List _)::_) -> raise (Echec_unif ("type "^ print_type t1 ^" non-unifiable avec liste"))
-
-
 
     (* types fleche à gauche pas à droite : echec  *)
   | (_, (Arr (_,_), t3)::_) -> raise (Echec_unif ("type fleche non-unifiable avec "^(print_type t3)))     
@@ -313,29 +459,52 @@ let rec unification (e : equa_zip) (but : string) : ptype =
     (* types produit des deux cotes : on decompose  *)
   | (e1 , (Prod(t1,t2), Prod(t3,t4))::e2) -> unification (e1, (t1, t3)::(t2, t4)::e2) but
   | (_, (Prod(_, _), t3)::_) -> raise (Echec_unif ("type produit non-unifiable avec "^(print_type t3)))     
-  | (_, (t3, Prod(_, _))::_) -> raise (Echec_unif ("type produit non-unifiable avec "^(print_type t3)))     
-                                       
-(* enchaine generation d'equation et unification *)
+  | (_, (t3, Prod(_, _))::_) -> raise (Echec_unif ("type produit non-unifiable avec "^(print_type t3)))
+  | (e1, (RefT t1, RefT t2)::e2) -> unification (e1, (t1, t2)::e2) but
+  | (_, (RefT _, t3)::_) -> raise (Echec_unif ("type référence non-unifiable avec "^(print_type t3)))
+  | (_, (t3, RefT _)::_) -> raise (Echec_unif ("type référence non-unifiable avec "^(print_type t3)))
+  | (e1, (UnitT, UnitT)::e2) -> unification (e1, e2) but
+  | (_, (UnitT, t3)::_) -> raise (Echec_unif ("type unité non-unifiable avec "^(print_type t3)))
+  | (_, (t3, UnitT)::_) -> raise (Echec_unif ("type unité non-unifiable avec "^(print_type t3)))
+  | (e1, (AddrT, AddrT)::e2) -> unification (e1, e2) but
+  | (_, (AddrT, t3)::_) -> raise (Echec_unif ("type adresse non-unifiable avec "^(print_type t3)))
+  | (_, (t3, AddrT)::_) -> raise (Echec_unif ("type adresse non-unifiable avec "^(print_type t3)))
+      
+
+
 
 let rec inference_with_env (t : pterm) (env : env) : ptype =
+  global_env := env;
   match t with
-  | Let (x, t1, t2) ->
-      (* 1. Inférer le type de t1 *)
-      let nv = nouvelle_var () in
-      let eq1 = genere_equa t1 (Var nv) env in
-      let t1_type = unification ([], eq1) nv in
+  | Let(x, t1, t2) ->
+    global_env := env; 
 
-      (* 2. Généraliser *)
-      let t1_gen = generalise env t1_type in
+    let nv = nouvelle_var () in
+    let eq1 = genere_equa t1 (Var nv) env in
+    let t1_type = unification ([], eq1) nv in
 
-      (* 3. Inférer t2 dans env etendu *)
-      inference_with_env t2 ((x, t1_gen) :: env)
+    let scheme =
+      if expansif t1 then
+        Weak (ref t1_type)
+      else
+        Strong (generalise env t1_type)
+    in
+
+    let env2 = (x, scheme) :: env in
+    global_env := env2;
+
+    inference_with_env t2 env2
+
+
 
   | _ ->
       (* Cas normal (sans Let) *)
       let nv = nouvelle_var () in
       let eq = genere_equa t (Var nv) env in
       unification ([], eq) nv
+
+                     
+
 
 
 let inference (t : pterm) : string =
