@@ -5,9 +5,13 @@ open Tas_lib.Evaluator
 
 let show_norm term =
   Printf.printf "Term : %s\n" (print_term term);
-  let nf = evaluer_cbv term in
-  Printf.printf "NF   : %s\n\n" (print_term nf)
-
+  let (nf, memf) = evaluer_cbv term [] in
+  Printf.printf "Resultat : %s\n" (print_term nf);
+  Printf.printf "Memoire : %s\n\n"
+    (String.concat "; "
+       (List.map (fun (a,v) ->
+           Printf.sprintf "%d ↦ %s" a (print_term v)
+       ) memf))
 
 
 (*  TEST 1 : β-réduction simple *)

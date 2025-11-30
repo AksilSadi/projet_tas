@@ -12,7 +12,7 @@ let new_address () =
   incr address_counter;
   a
 
-let rec cherch_mem a mem =
+let cherch_mem a mem =
   try Some (List.assoc a mem) with Not_found -> None
 
 let update_memory a v mem =

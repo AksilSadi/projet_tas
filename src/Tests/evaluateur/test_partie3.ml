@@ -3,8 +3,13 @@ open Tas_lib.Evaluator
 
 
 let show_nf t =
-  let nf = evaluer_cbv t in
-  Printf.printf "Resultat   : %s\n\n" (print_term nf)
+  let (nf, memf) = evaluer_cbv t [] in
+  Printf.printf "Resultat : %s\n" (print_term nf);
+  Printf.printf "Memoire  : %s\n\n"
+    (String.concat "; "
+       (List.map (fun (a,v) ->
+           Printf.sprintf "%d ↦ %s" a (print_term v)
+       ) memf))
 
 let line () =
   print_endline "-----------------------------------------------"
