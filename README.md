@@ -8,7 +8,7 @@ L’objectif : implémenter un évaluateur et un typeur pour un λ-calcul progre
 src/
 │
 ├── ast.ml              (* Définition de l’AST complet *)
-├── utils.ml            (* Aides diverses pour listes, mémoire... *)
+├── utils.ml            
 ├── evaluator.ml        (* Évaluateur CBV gauche→droite *)
 ├── typer.ml            (* Typeur + unification *)
 ├── main.ml             (* Point d’entrée : exécution d’un terme *)
