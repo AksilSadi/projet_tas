@@ -49,49 +49,7 @@ let rec expansif (t : pterm) : bool =
 
 
 
-(* pretty printer de termes*)     
-let rec print_term (t : pterm) : string =
-  match t with
-    Var x -> x
-  | App (t1, t2) -> "(" ^ print_term t1 ^ " " ^ print_term t2 ^ ")"
-  | Abs (x, t) -> "(fun " ^ x ^ " -> " ^ print_term t ^ ")"
-  | N n -> string_of_int n
-  | Add (t1, t2) -> "(" ^ print_term t1 ^ " + " ^ print_term t2 ^ ")"
-  | Ifz (t1, t2, t3) ->
-      "(ifz " ^ print_term t1 ^ " then " ^ print_term t2 ^ " else " ^ print_term t3 ^ ")"
-  | Succ t1 -> "(succ " ^ print_term t1 ^ ")"
-  | Pred t1 -> "(pred " ^ print_term t1 ^ ")"
-  | Couple (t1, t2) -> "(" ^ print_term t1 ^ ", " ^ print_term t2 ^ ")"
-  | ProdG t1 -> "(π₁ " ^ print_term t1 ^ ")"
-  | ProdD t1 -> "(π₂ " ^ print_term t1 ^ ")"
-  | SumG t1 -> "(inl " ^ print_term t1 ^ ")"
-  | SumD t1 -> "(inr " ^ print_term t1 ^ ")"
-  | MatchSum (t0, x1, t1, x2, t2) ->
-      "(match " ^ print_term t0 ^ " with inl "
-      ^ x1 ^ " -> " ^ print_term t1 ^ " | inr "
-      ^ x2 ^ " -> " ^ print_term t2 ^ ")"
-  | Let (x, t1, t2) ->
-      "(let " ^ x ^ " = " ^ print_term t1 ^ " in " ^ print_term t2 ^ ")"
-  | Fix t1 -> "(fix " ^ print_term t1 ^ ")"
-  | Hd t1 -> "(hd " ^ print_term t1 ^ ")"
-  | Tl t1 -> "(tl " ^ print_term t1 ^ ")"
-  | IfEmpty (t1, t2, t3) ->
-      "(ifempty " ^ print_term t1 ^ " then " ^ print_term t2 ^ " else " ^ print_term t3 ^ ")"
-  | Liste lst -> string_of_pterm_list lst
-  | Unit -> "()"
-  | Ref t1 -> "(ref " ^ print_term t1 ^ ")"
-  | DeRef t1 -> "(!" ^ print_term t1 ^ ")"
-  | Assign (t1, t2) -> "(" ^ print_term t1 ^ " := " ^ print_term t2 ^ ")"
-  | Address addr -> "(addr " ^ string_of_int addr ^ ")"
 
-and string_of_pterm_list (lst : pterm liste) : string =
-  let rec aux_list l =
-    match l with
-    | Empty -> ""
-    | Cons (head, Empty) -> print_term head
-    | Cons (head, tail) -> print_term head ^ "," ^ aux_list tail
-  in
-  "[" ^ aux_list lst ^ "]"
 
 
 
