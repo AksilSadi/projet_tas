@@ -5,7 +5,7 @@ open Tas_lib.Evaluator
 
 let show_norm term =
   Printf.printf "Term : %s\n" (print_term term);
-  let nf = normaliser term in
+  let nf = evaluer_cbv term in
   Printf.printf "NF   : %s\n\n" (print_term nf)
 
 

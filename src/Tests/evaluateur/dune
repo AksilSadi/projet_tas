@@ -3,3 +3,8 @@
  (modules test_partie2)
  (libraries tas_lib)
 )
+(executable
+ (name test_partie3)
+ (modules test_partie3)
+ (libraries tas_lib)
+)
