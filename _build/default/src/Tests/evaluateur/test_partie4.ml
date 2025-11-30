@@ -15,7 +15,7 @@ let string_of_memory (mem : memory) : string =
 let show_ref_eval t =
   Printf.printf "Terme     : %s\n" (print_term t);
   let (nf, memf) = evaluer_cbv t [] in
-  Printf.printf "NF        : %s\n" (print_term nf);
+  Printf.printf "Resultat        : %s\n" (print_term nf);
   Printf.printf "Mémoire   : %s\n\n" (string_of_memory memf)
 ;;
 
