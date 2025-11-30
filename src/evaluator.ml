@@ -68,6 +68,52 @@ let rec alpha_convert (t : pterm) (env : (string * string) list) : pterm =
       let x' = nom_frais () in
       let env' = (x, x') :: env in
       Abs (x', alpha_convert corps env')
+  | N n -> N n
+  | Add (t1, t2) ->
+      Add (alpha_convert t1 env, alpha_convert t2 env)
+  | Ifz (t1, t2, t3) ->
+      Ifz (alpha_convert t1 env, alpha_convert t2 env, alpha_convert t3 env)
+  | Succ t1 ->
+      Succ (alpha_convert t1 env)
+  | Pred t1 ->
+      Pred (alpha_convert t1 env)
+  | Couple (t1, t2) ->
+      Couple (alpha_convert t1 env, alpha_convert t2 env)
+  | ProdG t1 ->
+      ProdG (alpha_convert t1 env)
+  | ProdD t1 ->
+      ProdD (alpha_convert t1 env)
+  | SumG t1 ->
+      SumG (alpha_convert t1 env)
+  | SumD t1 ->
+      SumD (alpha_convert t1 env)
+  | MatchSum (t0, x1, t1, x2, t2) ->
+      let x1' = nom_frais () in
+      let x2' = nom_frais () in
+      let env1 = (x1, x1') :: env in
+      let env2 = (x2, x2') :: env in
+      MatchSum (alpha_convert t0 env, x1', alpha_convert t1 env1, x2', alpha_convert t2 env2)
+    | Let (x, t1, t2) ->
+      let x' = nom_frais () in
+      let env' = (x, x') :: env in
+      Let (x', alpha_convert t1 env, alpha_convert t2 env')
+  | Fix t1 ->
+      Fix (alpha_convert t1 env)
+  | Hd t1 ->
+      Hd (alpha_convert t1 env)
+  | Tl t1 ->
+      Tl (alpha_convert t1 env)
+  | IfEmpty (t1, t2, t3) ->
+      IfEmpty (alpha_convert t1 env, alpha_convert t2 env, alpha_convert t3 env)
+  | Liste lst ->
+      let rec alpha_convert_list l =
+        match l with
+        | Empty -> Empty
+        | Cons (head, tail) ->
+            Cons (alpha_convert head env, alpha_convert_list tail)
+      in
+      Liste (alpha_convert_list lst)   
+
   | _-> raise (Failure "alpha_convert: not implemented for this term")
 ;;
 
@@ -121,9 +167,9 @@ let rec etape_cbv (t : pterm) : pterm option =
 ;;
 
 (*normalisation*)
-let rec normaliser (t : pterm) : pterm =
+let rec evaluer_cbv (t : pterm) : pterm =
   match etape_cbv t with
-  | Some t' -> normaliser t'
+  | Some t' -> evaluer_cbv t'
   | None -> t
 ;;
 
