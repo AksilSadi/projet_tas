@@ -196,6 +196,7 @@ let rec substituer (nom : string) (remp : pterm) (t : pterm) : pterm =
 
 let rec est_valeur (t : pterm) : bool =
   match t with
+  | Var _ -> true
   | Abs _ -> true
   | N _ -> true
   | Liste l -> liste_est_valeur l

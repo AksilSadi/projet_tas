@@ -4,7 +4,7 @@ open Tas_lib.Evaluator
 
 let show_nf t =
   let nf = evaluer_cbv t in
-  Printf.printf "NF   : %s\n\n" (print_term nf)
+  Printf.printf "Resultat   : %s\n\n" (print_term nf)
 
 let line () =
   print_endline "-----------------------------------------------"
@@ -92,7 +92,7 @@ let test_fix_fact () =
            Abs ("n",
                 Ifz (Var "n",
                      N 1,
-                     Add (Var "n",
+                     Mul (Var "n",
                           App (Var "fact",
                                Pred (Var "n")))
                     )
