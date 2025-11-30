@@ -3,6 +3,8 @@ Projet réalisé dans le cadre du module TAS (Types & Sémantique) par Aksil Sad
 L’objectif : implémenter un évaluateur et un typeur pour un λ-calcul progressivement enrichi (entiers, listes, fix, let-polymorphisme, références, etc.).
 
 # 📁 Structure du projet
+
+```bash
 src/
 │
 ├── ast.ml              (* Définition de l’AST complet *)
@@ -25,6 +27,7 @@ src/
 │
 ├── dune                  (* Build des modules du projet *)
 └── dune-project
+```
 
 # Fonctionnalités réalisées
 
