@@ -35,6 +35,7 @@ let rec expansif (t : pterm) : bool =
   | Assign _ -> true
   | Fix _ -> true
   | Add _ -> true
+  | Mul _ -> true
   | Succ _ -> true
   | Pred _ -> true
   | Ifz _ -> true
@@ -179,6 +180,9 @@ let rec genere_equa (te : pterm) (ty : ptype) (e : env) : equa =
       (ty, Arr (Var nv1, Var nv2))::(genere_equa t (Var nv2) ((x, Weak (ref (Var nv1))) :: e))  
   | N _ -> [(ty, Nat)]
   | Add (t1, t2) -> let eq1 : equa = genere_equa t1 Nat e in
+      let eq2 : equa = genere_equa t2 Nat e in
+      (ty, Nat)::(eq1 @ eq2)
+  | Mul (t1, t2) -> let eq1 : equa = genere_equa t1 Nat e in
       let eq2 : equa = genere_equa t2 Nat e in
       (ty, Nat)::(eq1 @ eq2)
   | Ifz (t1, t2, t3) -> let eq1 : equa = genere_equa t1 Nat e in

@@ -8,6 +8,7 @@ let rec print_term (t : pterm) : string =
   | Abs (x, t) -> "(fun " ^ x ^ " -> " ^ print_term t ^ ")"
   | N n -> string_of_int n
   | Add (t1, t2) -> "(" ^ print_term t1 ^ " + " ^ print_term t2 ^ ")"
+  | Mul (t1, t2) -> "(" ^ print_term t1 ^ " * " ^ print_term t2 ^ ")"
   | Ifz (t1, t2, t3) ->
       "(ifz " ^ print_term t1 ^ " then " ^ print_term t2 ^ " else " ^ print_term t3 ^ ")"
   | Succ t1 -> "(succ " ^ print_term t1 ^ ")"
@@ -71,6 +72,8 @@ let rec alpha_convert (t : pterm) (env : (string * string) list) : pterm =
   | N n -> N n
   | Add (t1, t2) ->
       Add (alpha_convert t1 env, alpha_convert t2 env)
+  | Mul (t1, t2) ->
+      Mul (alpha_convert t1 env, alpha_convert t2 env)
   | Ifz (t1, t2, t3) ->
       Ifz (alpha_convert t1 env, alpha_convert t2 env, alpha_convert t3 env)
   | Succ t1 ->
@@ -136,6 +139,8 @@ let rec substituer (nom : string) (remp : pterm) (t : pterm) : pterm =
    | N n -> N n
    | Add (t1, t2) ->
        Add (substituer nom remp t1, substituer nom remp t2)
+   | Mul (t1, t2) ->
+       Mul (substituer nom remp t1, substituer nom remp t2)
    | Ifz (t1, t2, t3) ->
        Ifz (substituer nom remp t1, substituer nom remp t2, substituer nom remp t3)
    | Succ t1 ->
@@ -267,6 +272,20 @@ let rec etape_cbv (t : pterm) : pterm option =
                  | None ->
                      match t2 with
                      | N n2 -> Some (N (n1 + n2))
+                     | _ -> None)
+            | _ -> None
+      )
+    | Mul (t1, t2) -> (
+        match etape_cbv t1 with
+        | Some t1' -> Some (Mul (t1', t2))
+        | None ->
+            match t1 with
+            | N n1 ->
+                (match etape_cbv t2 with
+                 | Some t2' -> Some (Mul (t1, t2'))
+                 | None ->
+                     match t2 with
+                     | N n2 -> Some (N (n1 * n2))
                      | _ -> None)
             | _ -> None
       )

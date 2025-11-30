@@ -6,7 +6,8 @@ type pterm = Var of string
 | Abs of string * pterm 
 | N of int
 | Liste of pterm liste
-| Add of pterm * pterm 
+| Add of pterm * pterm
+| Mul of pterm * pterm
 | Ifz of pterm * pterm * pterm 
 | Succ of pterm 
 | Pred of pterm
