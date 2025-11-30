@@ -1,5 +1,29 @@
 open Ast
 
+
+type address = int
+type binding = address * pterm
+type memory = binding list
+
+let address_counter = ref 0
+
+let new_address () =
+  let a = !address_counter in
+  incr address_counter;
+  a
+
+let rec mem_lookup a mem =
+  try Some (List.assoc a mem) with Not_found -> None
+
+let mem_update a v mem =
+  (a, v) :: List.remove_assoc a mem
+
+let memory_extend v mem =
+  let a = new_address () in
+  let mem' = mem_update a v mem in
+  (a, mem')
+
+
 (* pretty printer de termes*)     
 let rec print_term (t : pterm) : string =
   match t with
@@ -115,9 +139,14 @@ let rec alpha_convert (t : pterm) (env : (string * string) list) : pterm =
         | Cons (head, tail) ->
             Cons (alpha_convert head env, alpha_convert_list tail)
       in
-      Liste (alpha_convert_list lst)   
+      Liste (alpha_convert_list lst)
+  | Unit -> Unit
+  | Address a -> Address a
+  | Ref t1 -> Ref (alpha_convert t1 env)
+  | DeRef t1 -> DeRef (alpha_convert t1 env)
+  | Assign (t1, t2) ->
+      Assign (alpha_convert t1 env, alpha_convert t2 env)   
 
-  | _-> raise (Failure "alpha_convert: not implemented for this term")
 ;;
 
 let rec substituer (nom : string) (remp : pterm) (t : pterm) : pterm =
@@ -190,8 +219,13 @@ let rec substituer (nom : string) (remp : pterm) (t : pterm) : pterm =
          | Cons (head, tail) ->
              Cons (substituer nom remp head, substituer_list tail)
        in
-       Liste (substituer_list lst)     
-   | _-> raise (Failure "substituer: not implemented for this term")
+       Liste (substituer_list lst)
+   | Unit -> Unit
+   | Address a -> Address a
+   | Ref t1 -> Ref (substituer nom remp t1)
+   | DeRef t1 -> DeRef (substituer nom remp t1)
+   | Assign (t1, t2) ->
+       Assign (substituer nom remp t1, substituer nom remp t2)     
 ;;
 
 let rec est_valeur (t : pterm) : bool =
@@ -199,6 +233,8 @@ let rec est_valeur (t : pterm) : bool =
   | Var _ -> true
   | Abs _ -> true
   | N _ -> true
+  | Unit -> true
+  | Address _ -> true
   | Liste l -> liste_est_valeur l
   | Couple (v1, v2) -> est_valeur v1 && est_valeur v2
   | SumG v -> est_valeur v
@@ -211,7 +247,7 @@ and liste_est_valeur (l : pterm liste) : bool =
 ;;
 
 (*reduction cbv left to right*)
-
+(*adapter l'evaluation apres l'ajout des reference et la gestion des adresse -_- partie04*)
 let rec etape_cbv (t : pterm) : pterm option =
   match t with
 
@@ -332,9 +368,45 @@ let rec etape_cbv (t : pterm) : pterm option =
           | SumG v when est_valeur v -> Some (substituer x1 v t1)
           | SumD v when est_valeur v -> Some (substituer x2 v t2)
           | _ -> None
-    ) 
+    )
+    | Ref e -> (
+     match etape_cbv e with
+      | Some e' -> Some (Ref e', mem)
+      | None ->
+        if est_valeur e then
+          let (a, mem') = memory_extend e mem in
+          Some (Address a, mem')
+        else None
+        )
+    | DeRef e -> (
+      match etape_cbv e with
+       | Some e' -> Some (DeRef e', mem)
+       | None ->
+          match e with
+            | Address a ->
+              (match mem_lookup a mem with
+                 | Some v -> Some (v, mem)
+                 | None -> failwith "dereference: adresse inconnue")
+                | _ -> None )
 
-  | _ -> None
+       | _ -> None
+    | Assign (e1, e2) -> (
+     match etape_cbv e1 with
+      | Some e1' -> Some (Assign (e1', e2), mem)
+      | None ->
+        match e1 with
+        | Address a ->
+            (match etape_cbv e2 with
+             | Some e2' -> Some (Assign (e1, e2'), mem)
+             | None ->
+                 if est_valeur e2 then
+                   let mem' = mem_update a e2 mem in
+                   Some (Unit, mem')
+                 else None)
+        | _ -> None
+  )
+
+    
 ;;
 
 (*normalisation*)
