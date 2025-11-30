@@ -1,5 +1,6 @@
 open Tas_lib.Ast
 open Tas_lib.Typer
+open Tas_lib.Evaluator
 
 (* === ANSI color codes === *)
 let green = "\027[32m"

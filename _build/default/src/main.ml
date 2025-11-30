@@ -1,5 +1,7 @@
 open Tas_lib.Ast
 open Tas_lib.Typer
+open Tas_lib.Evaluator
+
 
 let () =
   let t = Ref (Liste Empty) in

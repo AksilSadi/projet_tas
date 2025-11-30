@@ -1,4 +1,5 @@
 open Ast
+open Evaluator
 
 (* Déclarations anticipées pour éviter les erreurs *)
 let unification : equa_zip -> string -> ptype =

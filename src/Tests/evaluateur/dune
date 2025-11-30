@@ -1,0 +1,5 @@
+(executable
+ (name test_partie2)
+ (modules test_partie2)
+ (libraries tas_lib)
+)

@@ -1,4 +1,4 @@
-# C:\Users\DELL\AppData\Local\opam-testing\default\bin\dune.exe exec ./src/Tests/typage/test_partie4.exe
+# C:\Users\DELL\AppData\Local\opam-testing\default\bin\dune.exe exec ./src/Tests/evaluateur/test_partie2.exe
 # OCAMLPARAM: unset
 # Shared cache: disabled
 # Shared cache location:
@@ -14,4 +14,4 @@
 #  ; build_dir = In_build_dir "default"
 #  ; instrument_with = []
 #  }
-$ C:\Users\DELL\AppData\Local\opam-testing\default\bin\ocamlc.opt.exe -config > C:\Users\DELL\AppData\Local\Temp\dune_e74345_output
+$ C:\Users\DELL\AppData\Local\opam-testing\default\bin\ocamlc.opt.exe -config > C:\Users\DELL\AppData\Local\Temp\dune_fa7985_output
